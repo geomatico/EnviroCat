@@ -14,7 +14,7 @@ version=0.1
 author=Nathan Torrence and edited by Juan Barreto, Wladimir Szczerban and Francisco Pérez Sampayo
 email=info@geomatico.es
 
-about=Té la possibilitat de posar cap tipus d'arxius en format ràster, WMS i SHP..
+about=This QGIS plugin is an adaptation of the Canadian Web Services plugin ([https://github.com/eswright/cgdi-qgis-services](https://github.com/eswright/cgdi-qgis-services)). This QGIS plugin contains a set of preloaded layers with information about environmental variables regarding the territory of Catalunya, Catalonia in English. Original data are open and available, but they may be scattered among several web services. The aim of this plugin is to provide a powerful summary of environmental information of Catalonia in order to help basic ecological research and nature conservation management.
 
 tracker=https://github.com/geomatico/EnviroCat/issues
 repository=https://github.com/geomatico/EnviroCat
