@@ -47,37 +47,6 @@
      <item>
       <widget class="QLineEdit" name="searchBox"/>
      </item>
-     <item>
-      <widget class="QLabel" name="sortLbl">
-       <property name="text">
-        <string>ordenar per:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="sortCombo">
-       <item>
-        <property name="text">
-         <string>Nom</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Tipus</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Host</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Layers</string>
-        </property>
-       </item>
-      </widget>
-     </item>
     </layout>
    </item>
    <item>
@@ -96,6 +65,9 @@
      </property>
      <property name="selectionBehavior">
       <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="sortingEnabled">
+      <bool>true</bool>
      </property>
     </widget>
    </item>

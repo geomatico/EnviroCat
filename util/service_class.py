@@ -9,7 +9,7 @@
 
 class ServiceObject:
 	
-    def __init__(self, name, host, desc, serviceType, url, layers, numLayers):
+    def __init__(self, name, host, desc, serviceType, url, layers, numLayers, institution):
         self.name = name
         self.host = host
         self.desc = desc
@@ -17,3 +17,4 @@ class ServiceObject:
         self.url = url
         self.layers = layers
         self.numLayers = numLayers
+        self.institution = institution

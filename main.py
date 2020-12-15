@@ -48,10 +48,9 @@ class EnviroCat(object):
         self.toolbar = self.iface.addToolBar(u'EnviroCat')
         self.toolbar.setObjectName(u'EnviroCat')
         # define the datasets used:
-        self.works = True  # will be used to determine whether the list url can be reached
-        self.services = self.loadServiceList()
+        self.works = False  # will be used to determine whether the list url can be reached
+        self.services = None
         if self.works == True:  # only sorts when the url worked
-            self.services = self.sortServices(self.services)  # initialize and sort the services
             self.shownServices = self.services  # will change when serch criteria change to allow for the selected dataset to be found by row number
 
     # noinspection PyMethodMayBeStatic
@@ -149,7 +148,6 @@ class EnviroCat(object):
         self.dlg.close_btn.released.connect(self.dlg.close)
         self.dlg.load_btn.released.connect(self.loadWebService)
         self.dlg.searchBox.textEdited.connect(self.search)
-        self.dlg.sortCombo.activated.connect(self.sortCurrentServices)
         self.dlg.info_btn.released.connect(self.openInfo)
 
     ## unload(self) removes the plugin from QGIS GUI
@@ -171,8 +169,9 @@ class EnviroCat(object):
         # rowNum = self.dlg.tableWidget.currentRow()
         rowNums = []
         selected = self.dlg.tableWidget.selectedItems()
+        columnCount = self.dlg.tableWidget.columnCount()
         if (len(selected) > 0):
-            for i in range(0, len(selected), 4):
+            for i in range(0, len(selected), columnCount):
                 rowNums.append(self.dlg.tableWidget.row(selected[i]))
 
         selectedServices = []
@@ -215,6 +214,7 @@ class EnviroCat(object):
     # Modifies: When url can't be reached, self.works is set to false
     def loadServiceList(self):
         url = 'https://qgis.bioexplora.cat/script.json'
+        #url = 'http://127.0.0.1:8080/script.json'
         response = requests.get(url)
 
         try:
@@ -234,6 +234,7 @@ class EnviroCat(object):
                 # get information needed to determine whether to include this service
                 name = service['title']
                 layers = service['layers']
+                institution = service['institution'] if 'institution' in service else None
                 numLayers = len(layers)
                 serviceType = service['serviceInterfaceType']  # to exclude WMTS services from being included
                 if service[
@@ -249,7 +250,7 @@ class EnviroCat(object):
                     # host = host[host.index("/") + 2:] # removes 'https://' or 'http://'
                     # directory = service['directoryUrl']
                     # create an object containing all the fields of a web service
-                    webServiceObj = ServiceObject(name, host, desc, serviceType, url, layers, numLayers)
+                    webServiceObj = ServiceObject(name, host, desc, serviceType, url, layers, numLayers, institution)
                     # add that object to our list of web service objects
                     webServicesList.append(webServiceObj)
 
@@ -259,11 +260,11 @@ class EnviroCat(object):
     # setTableWidgetBehaviour: CWS -> None
     def setTableWidgetBehaviour(self):
         # set row and column sizes and lock them
-        self.dlg.tableWidget.setColumnWidth(0, 110)
-        self.dlg.tableWidget.setColumnWidth(1, 110)
-        self.dlg.tableWidget.setColumnWidth(2, 207)
+        self.dlg.tableWidget.setColumnWidth(0, 200)
+        self.dlg.tableWidget.setColumnWidth(1, 200)
+        self.dlg.tableWidget.setColumnWidth(2, 86)
         self.dlg.tableWidget.setColumnWidth(3, 86)
-        self.dlg.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.dlg.tableWidget.setColumnWidth(4, 86)
         self.dlg.tableWidget.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
 
         # self.dlg.tableWidget.resizeRowsToContents()
@@ -278,23 +279,24 @@ class EnviroCat(object):
     # fill_table(self, serviceList): fills tableWidget with the services in serviceList
     # fill_table: CWS (listof Service) -> None
     def fill_table(self, serviceList):
-        # initialize an empty table with 3 columns
+        # initialize an empty table with columns
         self.dlg.tableWidget.setRowCount(0)
-        self.dlg.tableWidget.setColumnCount(4)
+        self.dlg.tableWidget.setColumnCount(5)
 
         for service in serviceList:
             index = serviceList.index(service)
             self.dlg.tableWidget.insertRow(index)  # inserts a blank row
             # lets fill that row:
             self.dlg.tableWidget.setItem(index, 0, QTableWidgetItem(service.name))  # fills in with the name
-            self.dlg.tableWidget.setItem(index, 1,
+            self.dlg.tableWidget.setItem(index, 1, QTableWidgetItem(service.institution))  # fills in with the name
+            self.dlg.tableWidget.setItem(index, 2,
                                          QTableWidgetItem(service.serviceType))  # fills in with the service type
-            self.dlg.tableWidget.setItem(index, 2, QTableWidgetItem(service.host))  # fills in with the host
-            self.dlg.tableWidget.setItem(index, 3,
+            self.dlg.tableWidget.setItem(index, 3, QTableWidgetItem(service.host))  # fills in with the host
+            self.dlg.tableWidget.setItem(index, 4,
                                          QTableWidgetItem(str(service.numLayers)))  # fills in with the number of layers
 
         # initialize the header labels
-        self.dlg.tableWidget.setHorizontalHeaderLabels(["Nom", "Tipus", "Ubicacio", "# of Layers"])
+        self.dlg.tableWidget.setHorizontalHeaderLabels(["Nom", "Institucio", "Tipus", "Ubicacio", "# of Layers"])
 
         self.setTableWidgetBehaviour()
 
@@ -320,36 +322,7 @@ class EnviroCat(object):
                 applicableServices.append(service)
         # populates the table with only applicable services
         self.shownServices = applicableServices  # for description display and loading purposes
-        self.sortCurrentServices()
         self.fill_table(applicableServices)
-
-    # sortServices(self, servicesList) rearranges the services in ascending order based on
-    #								  the selected sort field in sortCombo
-    # sortServices: CWS (listof Service) -> (listof Service)
-    # Modifies: table is filled with the sorted list of services
-    def sortServices(self, servicesList):
-        sortParam = self.dlg.sortCombo.currentText()
-        # requires that these specific names are used in the sortCombo combo box
-        if sortParam == "Name":
-            servicesList.sort(key=lambda service: service.name.lower())
-        elif sortParam == "Type":
-            servicesList.sort(key=lambda service: service.serviceType)
-        elif sortParam == "Host":
-            servicesList.sort(key=lambda service: service.host)
-        elif sortParam == "Layers":
-            servicesList.sort(key=lambda service: service.numLayers)
-
-        self.fill_table(servicesList)
-
-        return servicesList
-
-    # sortCurrentServices(self) acts as a wrapper for sortServices so it can be connected
-    #						   to the change of sort type in sortCombo
-    # sortCurrentServices: CWS -> (listof Service)
-    # Modifies: table is filled with sorted version of self.shownServices
-    def sortCurrentServices(self):
-        # used for the sortCombo box because it can only take one parameter and will always use shownDatasets
-        return self.sortServices(self.shownServices)
 
     # loadWebService(self): loads the selected service into the map layer by layer. If any layer
     #					   is not valid, a warning message will be displayed to the user
@@ -408,23 +381,24 @@ class EnviroCat(object):
 
     def run(self):
         """Run method that performs all the real work"""
-        if self.works == False:  # if the URL to load in the services wasn't working
-            QMessageBox.warning(None, "WARNING",
-                                "We couldn't reach our list of web services at this time. Please try again later.")
-        # just show the user an error message and don't launch the plugin
-        else:  # if all is well, continue on with opening the plugin
+        try:
+            self.services = self.loadServiceList()
+            self.works = True
+        except:
+            self.works = False
+            QMessageBox.warning(
+                None,
+                "WARNING",
+                "No s’ha pogut accedir al llistat de serveis web. Si us plau torneu-ho a provar més tard."
+            )
+
+        if self.works:
+            self.services = self.loadServiceList()
             self.shownServices = self.services  # reinitialize shownDatasets with all the datasets sorted by name
-            self.dlg.sortCombo.setCurrentIndex(0)  # reset sortCombo to the Names option
-            self.sortServices(self.services)  # reinitialize the table with all datasets sorted by name
+            self.fill_table(self.services)
             self.dlg.searchBox.clear()  # clear search box
             self.dlg.textEdit.clear()  # clear description box
             self.dlg.show()  # show the dialog
 
             # Run the dialog event loop
-            result = self.dlg.exec_()
-
-            # See if OK was pressed
-            if result:
-                # Do something useful here - delete the line containing pass and
-                # substitute with your code.
-                pass
+            self.dlg.exec_()
